@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CS180 Project 4A — Image Warping and Mosaicing</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #222;
+        --muted: #62666b;
+        --paper: #f6f5f1;
+        --line: #dfded8;
+        --accent: #173e35;
+        --placeholder: #ebece6;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      header, main, footer { width: min(100% - 36px, 1000px); margin-inline: auto; }
+      header { padding: 60px 0 34px; border-bottom: 1px solid var(--line); }
+      .eyebrow { color: var(--accent); font-size: .78rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+      h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+      h1 { max-width: 740px; margin: 12px 0; font-size: clamp(2.2rem, 6vw, 4rem); line-height: 1.08; }
+      h2 { margin: 8px 0 6px; font-size: 2rem; }
+      h3 { margin: 0 0 4px; font-size: 1.2rem; }
+      header p, .intro { max-width: 700px; color: var(--muted); }
+      main { padding: 30px 0 60px; }
+      section { padding: 26px 0 38px; border-bottom: 1px solid var(--line); }
+      .note { max-width: 780px; margin: 20px 0 32px; padding: 16px 20px; border-left: 3px solid var(--accent); background: var(--placeholder); }
+      .note p { margin: 0; }
+      .scene, .work-item { padding: 22px 0; border-top: 1px solid var(--line); }
+      .scene > p, .work-item > p { margin: 0 0 15px; color: var(--muted); }
+      .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+      figure { margin: 0; min-width: 0; }
+      figure img { display: block; width: 100%; height: auto; background: #e5e3dc; }
+      figcaption { padding-top: 7px; color: var(--muted); font-size: .88rem; }
+      .correspondence-figure { max-width: 860px; margin: 22px 0; }
+      .equation { padding: 14px 17px; overflow-x: auto; background: #eeede8; border-radius: 5px; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+      .todo { min-height: 180px; display: grid; place-items: center; padding: 20px; background: var(--placeholder); border: 1px dashed #a9aaa1; color: var(--muted); text-align: center; }
+      .todo p { max-width: 400px; margin: 0; }
+      .triple { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+      .code-note { margin-top: 18px; color: var(--muted); font-size: .92rem; }
+      table { width: 100%; border-collapse: collapse; margin: 18px 0; }
+      th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--line); }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      a { color: var(--accent); }
+      footer { padding: 18px 0 34px; color: var(--muted); font-size: .88rem; }
+      @media (max-width: 680px) {
+        header { padding-top: 42px; }
+        .pair, .triple { grid-template-columns: 1fr; gap: 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">CS180 · Project 4A</div>
+      <h1>Image Warping and Mosaicing</h1>
+      <p>This project uses manually matched image points to estimate homographies, warp photographs, rectify planar objects, and combine overlapping views into mosaics.</p>
+    </header>
+
+    <main>
+      <section aria-labelledby="a1-heading">
+        <div class="eyebrow">Part A.1</div>
+        <h2 id="a1-heading">Shooting the pictures</h2>
+        <p class="intro">I photographed three different scenes in overlapping pairs. Each pair was taken from the same spot. I rotated the camera slightly to the left and then slightly to the right without changing the center of projection.</p>
+
+        <div class="note"><p>Keeping the camera position fixed while rotating it gives the two views a similar center of projection. Their shared scene details provide corresponding points for alignment.</p></div>
+
+        <article class="scene">
+          <h3>Scene 1 · Bathroom stalls</h3>
+          <p>The stall dividers, doors, and floor tiles appear in both views.</p>
+          <div class="pair">
+            <figure><img src="images/bathroom_1.jpg" alt="Bathroom stalls, first view"><figcaption>View 1</figcaption></figure>
+            <figure><img src="images/bathroom_2.jpg" alt="Bathroom stalls, second overlapping view"><figcaption>View 2</figcaption></figure>
+          </div>
+        </article>
+
+        <article class="scene">
+          <h3>Scene 2 · Poster hallway</h3>
+          <p>The framed poster, wall, and doorway provide shared details across the pair.</p>
+          <div class="pair">
+            <figure><img src="images/posters_1.jpg" alt="First view of the poster hallway"><figcaption>View 1</figcaption></figure>
+            <figure><img src="images/posters_2.jpg" alt="Second overlapping view of the poster hallway"><figcaption>View 2</figcaption></figure>
+          </div>
+        </article>
+
+        <article class="scene">
+          <h3>Scene 3 · Hallway doors</h3>
+          <p>The fire alarm, wall fixtures, and doors are visible in both views.</p>
+          <div class="pair">
+            <figure><img src="images/hallway_1.jpg" alt="First hallway view with a private parking sign"><figcaption>View 1</figcaption></figure>
+            <figure><img src="images/hallway_2.jpg" alt="Second overlapping hallway view with doors"><figcaption>View 2</figcaption></figure>
+          </div>
+        </article>
+      </section>
+
+      <section aria-labelledby="a2-heading">
+        <div class="eyebrow">Part A.2</div>
+        <h2 id="a2-heading">Recovering homographies</h2>
+        <p class="intro">I selected 29 point correspondences between the two poster photographs using the CS180 correspondence tool. The figure overlays the photos with colored lines connecting matching scene features.</p>
+
+        <figure class="correspondence-figure">
+          <img src="images/poster_correspondences.svg" alt="Poster photos side by side with colored lines connecting 29 matching points">
+          <figcaption>Figure 1. The colored lines connect manually matched points in the poster image pair.</figcaption>
+        </figure>
+
+        <p>A homography maps a point <code>(x₁, y₁)</code> in Image 1 to its match <code>(x₂, y₂)</code> in Image 2:</p>
+        <div class="equation">[x₂, y₂, 1]ᵀ ∼ H [x₁, y₁, 1]ᵀ
+
+H = [[h₁, h₂, h₃],
+     [h₄, h₅, h₆],
+     [h₇, h₈, 1]]</div>
+        <p>Fixing the bottom-right entry to 1 leaves eight unknowns. Each correspondence contributes two rows to the linear system <code>A h = b</code>:</p>
+        <div class="equation">For one correspondence (x₁, y₁) → (x₂, y₂):
+
+Aᵢ = [[ x₁  y₁  1   0   0   0  -x₁x₂  -y₁x₂ ],
+      [ 0   0   0   x₁  y₁  1  -x₁y₂  -y₁y₂ ]]
+
+bᵢ = [x₂, y₂]ᵀ      h = [h₁, h₂, h₃, h₄, h₅, h₆, h₇, h₈]ᵀ
+
+Stack all Aᵢ and bᵢ rows, then solve A h ≈ b by least squares.</div>
+        <p>Using all 29 correspondences, computing <code>H</code> gives this homography from Image 1 to Image 2:</p>
+        <div class="equation">[[ 1.404996, -0.007883, -466.770887],
+ [ 0.263762,  1.243401, -174.077649],
+ [ 0.000349, -0.000008,    1.000000]]</div>
+        <p>Mean reprojection error: 4.63 pixels. Maximum reprojection error: 22.34 pixels.</p>
+      </section>
+
+      <section aria-labelledby="a3-heading">
+        <div class="eyebrow">Part A.3</div>
+        <h2 id="a3-heading">Warping and rectification</h2>
+
+        <article class="work-item">
+          <h3>Rectification 1 · Star Wars poster</h3>
+          <p>The Star Wars poster has four obvious corners. I selected these corners in top-left, top-right, bottom-right, and bottom-left order and mapped them to an 800 by 1200 pixel rectangle. I then transformed the image corners to determine the output canvas area. From there, I iterated through the pixels in this canvas and multiplied each pixel's homogeneous coordinates by the inverse homography to find its source location. For nearest-neighbor sampling, I rounded the source coordinates to select the nearest pixel. I also used bilinear warping, where I kept the decimal source coordinates and calculated a weighted average of the four surrounding pixels based on their horizontal and vertical distances.</p>
+          <div class="triple">
+            <figure><img src="images/starwars_poster.jpeg" alt="Oblique source photograph of a Star Wars poster"><figcaption>Source photo</figcaption></figure>
+            <figure><img src="results/starwars_rectified_nearest.png" alt="Star Wars poster rectified using inverse warping and nearest-neighbor interpolation"><figcaption>Nearest-neighbor rectification. The poster is rectangular; the surrounding photo is also warped.</figcaption></figure>
+            <figure><img src="results/starwars_rectified_bilinear.png" alt="Star Wars poster rectified using inverse warping and bilinear interpolation"><figcaption>Bilinear rectification.</figcaption></figure>
+          </div>
+        </article>
+
+        <article class="work-item">
+          <h3>Rectification 2 · Wave print</h3>
+          <p>I selected the outer corners of the hanging poster and mapped them to an 800 by 1280 pixel rectangle.</p>
+          <div class="triple">
+            <figure><img src="images/wave_poster.jpg" alt="Angled source photograph of a hanging wave print with wooden bars"><figcaption>Source photo</figcaption></figure>
+            <figure><img src="results/wave_rectified_nearest.png" alt="Wave print rectified using inverse warping and nearest-neighbor interpolation"><figcaption>Nearest-neighbor rectification of the hanging wave print.</figcaption></figure>
+            <figure><img src="results/wave_rectified_bilinear.png" alt="Wave print rectified using inverse warping and bilinear interpolation"><figcaption>Bilinear rectification.</figcaption></figure>
+          </div>
+        </article>
+        <p>I treat integer coordinates as pixel centers, with <code>(0, 0)</code> at the center of the top-left pixel. The canvas bounds come from the transformed image corners. Output locations that map outside the source image remain black. The target rectangles specify the poster regions; the complete output canvases also include the warped surroundings.</p>
+        <h3>Speed and quality trade-offs</h3>
+        <p>Both methods gave me the same rectified geometry, and at this size, the results look almost identical. Nearest-neighbor sampling takes the color of a single source pixel, which keeps the original pixel values but can make edges look jagged. Bilinear sampling blends nearby pixels, making text and edges look smoother but sometimes slightly blurry. Neither method can fix the curves already present in the physical paper.</p>
+        <table>
+          <caption>Warping time in one local run, excluding image loading and saving</caption>
+          <thead><tr><th scope="col">Image</th><th scope="col">Nearest neighbor</th><th scope="col">Bilinear</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Star Wars</th><td>10.90 seconds</td><td>23.72 seconds</td></tr>
+            <tr><th scope="row">Wave print</th><td>8.60 seconds</td><td>19.50 seconds</td></tr>
+          </tbody>
+        </table>
+        <p>In my loop-based implementation, bilinear sampling took about twice as long as nearest neighbor. This makes sense because bilinear interpolation combines four source pixel colors for each output pixel, while nearest neighbor only needs one. The exact timings also depend on the image size and the computer running the code.</p>
+        <p class="code-note">Both <code>warpImageNearestNeighbor</code> and <code>warpImageBilinear</code> are implemented in <a href="proj4a.py">proj4a.py</a>. Running the file generates all four rectifications and prints the time taken by each warp.</p>
+      </section>
+
+      <section aria-labelledby="a4-heading">
+        <div class="eyebrow">Part A.4</div>
+        <h2 id="a4-heading">Blending images into mosaics</h2>
+        <p class="intro">Simply placing one warped image on top of another can leave a visible seam, especially when the lighting or alignment is slightly different. To make the transition smoother, I use feather blending. Each image gets a weight of 1 at its center, which gradually decreases to 0 toward its edges. This lets the images blend together instead of creating a sharp boundary.</p>
+        <p>I keep Image 1 fixed and warp Image 2 into its coordinate system. I calculate the canvas size using the corners of both images and use bilinear interpolation when warping. In areas where the images overlap, I combine their colors using a weighted average:</p>
+        <div class="equation">mosaic = (w₁ × color₁ + w₂ × color₂) / (w₁ + w₂)</div>
+        <p>If only one image covers a pixel, it keeps that image's color. Pixels outside both images stay black. I calculate the feather weights in each image's original coordinates and use a very small positive weight at valid edge pixels.</p>
+        <p>I also reuse <code>warpImageBilinear</code> to get the warped image, feather weights, and canvas position. Then <code>makeMosaic</code> combines everything onto one canvas. Feather blending helps hide seams, but it doesn't fix alignment errors, parallax, or perspective stretching.</p>
+
+        <article class="work-item">
+          <h3>Mosaic 1 · Bathroom stalls</h3>
+          <div class="pair">
+            <figure><img src="images/bathroom_1.jpg" alt="Bathroom mosaic source view 1"><figcaption>Source 1</figcaption></figure>
+            <figure><img src="images/bathroom_2.jpg" alt="Bathroom mosaic source view 2"><figcaption>Source 2</figcaption></figure>
+          </div>
+          <p>For this mosaic, I manually selected 16 matching point pairs between the two bathroom photos. The doors line up fairly well, although there's still some ghosting around the ceiling fixtures and upper supports.</p>
+          <figure><img src="results/mosaic_bathroom.png" alt="Bathroom stalls mosaic made with bilinear warping and feather blending"><figcaption>Bathroom mosaic using 16 manual point pairs. The doors align reasonably well, but slight ghosting remains around the ceiling fixtures and upper supports.</figcaption></figure>
+        </article>
+
+        <article class="work-item">
+          <h3>Mosaic 2 · Poster hallway</h3>
+          <div class="pair">
+            <figure><img src="images/posters_1.jpg" alt="Poster mosaic source view 1"><figcaption>Source 1</figcaption></figure>
+            <figure><img src="images/posters_2.jpg" alt="Poster mosaic source view 2"><figcaption>Source 2</figcaption></figure>
+          </div>
+          <p>I used 29 manually selected correspondences to create this mosaic. After warping the images with bilinear interpolation, I combined them using normalized feather weights. The black areas are regions where neither photo provides any image data.</p>
+          <figure><img src="results/mosaic_posters.png" alt="Poster hallway mosaic combining the two overlapping views with feather blending"><figcaption>Poster hallway mosaic using 29 manual correspondences, bilinear sampling, and normalized feather weights. Black regions lie outside both photographs.</figcaption></figure>
+        </article>
+
+        <article class="work-item">
+          <h3>Mosaic 3 · Hallway doors</h3>
+          <div class="pair">
+            <figure><img src="images/hallway_1.jpg" alt="Hallway mosaic source view 1"><figcaption>Source 1</figcaption></figure>
+            <figure><img src="images/hallway_2.jpg" alt="Hallway mosaic source view 2"><figcaption>Source 2</figcaption></figure>
+          </div>
+          <p>For the final mosaic, I used seven cleaned matching point pairs. I also removed four leftover Star Wars point pairs from the exported correspondences.</p>
+          <figure><img src="results/mosaic_hallway.png" alt="Hallway mosaic with feather blending and visible residual double edges near the central wall fixtures"><figcaption>Hallway mosaic using seven cleaned manual point pairs. Four leftover Star Wars point pairs were excluded from the export. Visible ghosting remains around the warning sign, pipe, and door frame.</figcaption></figure>
+        </article>
+        <p>This mosaic turned out a little worse than the other two. There are noticeable double edges around the warning sign, pipe, and door frame, even after feather blending. This is likely because some of my point matches weren't perfectly accurate, along with possible parallax from objects being at different depths. Better point matches could help, but a single homography can't perfectly align everything if the camera moved between the two shots.</p>
+        <h3>Implementation</h3>
+        <p class="code-note">In <a href="proj4a.py"><code>proj4a.py</code></a>, my <code>makeMosaic</code> function reuses <code>warpImageBilinear</code> and the <code>featherWeight</code> helper. For each scene, I load the two images and their saved point correspondences, calculate the homography, warp the images, and save the final blended mosaic.</p>
+      </section>
+
+    </main>
+
+    <footer>CS180 · Image Warping and Mosaicing · Part A</footer>
+  </body>
+</html>

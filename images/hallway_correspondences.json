@@ -1,0 +1,65 @@
+{
+  "im1_name": "IMG_7614",
+  "im2_name": "IMG_7615",
+  "im1Points": [
+    [
+      541,
+      252
+    ],
+    [
+      544,
+      1409
+    ],
+    [
+      931,
+      392
+    ],
+    [
+      895,
+      1138
+    ],
+    [
+      401,
+      1340
+    ],
+    [
+      435,
+      646
+    ],
+    [
+      439,
+      784
+    ]
+  ],
+  "im2Points": [
+    [
+      115,
+      186
+    ],
+    [
+      185,
+      1460
+    ],
+    [
+      546,
+      357
+    ],
+    [
+      550,
+      1078
+    ],
+    [
+      18,
+      1387
+    ],
+    [
+      22,
+      620
+    ],
+    [
+      24,
+      774
+    ]
+  ],
+  "note": "First four exported pairs were leftover Star Wars rectification points and were excluded. Original export preserved separately."
+}
