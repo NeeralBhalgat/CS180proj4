@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CS180 Project 4A — Image Warping and Mosaicing</title>
+    <title>CS180 Project 4 — Automatic Image Mosaicing</title>
     <style>
       :root {
         color-scheme: light;
@@ -48,18 +48,46 @@
       @media (max-width: 680px) {
         header { padding-top: 42px; }
         .pair, .triple { grid-template-columns: 1fr; gap: 20px; }
+        table { font-size: .85rem; }
+        th, td { padding: 6px 4px; }
+      }
+      @media print {
+        body { background: white; font-size: 10pt; line-height: 1.4; }
+        .pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .triple { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        header, main, footer { width: 100%; }
+        header { padding: 12px 0; }
+        main { padding-top: 8px; }
+        section { padding: 12px 0 18px; }
+        h1 { font-size: 30pt; }
+        h2 { font-size: 20pt; }
+        h3 { break-after: avoid; }
+        figure, .pair, .triple, table, .equation { break-inside: avoid; }
+        figure img { max-height: 170mm; object-fit: contain; }
+        .pair img { max-height: 65mm; }
+        .scene, #a3 .work-item, #a4 .work-item,
+        #b1 .work-item, #b2 .work-item, #b3 .work-item { break-inside: avoid; }
+        #a4 .work-item img { max-height: 105mm; }
+        #a4 .pair img { max-height: 60mm; }
+        #b4 { break-before: page; }
+        #b4 .work-item { break-before: page; break-inside: avoid; }
+        #b4 .work-item img { max-height: 100mm; }
+        figcaption { font-size: 8pt; }
+        .work-item, .scene { padding: 12px 0; }
+        a { text-decoration: none; }
       }
     </style>
   </head>
   <body>
     <header>
-      <div class="eyebrow">CS180 · Project 4A</div>
-      <h1>Image Warping and Mosaicing</h1>
-      <p>This project uses manually matched image points to estimate homographies, warp photographs, rectify planar objects, and combine overlapping views into mosaics.</p>
+      <div class="eyebrow">CS180 · Project 4 · Parts A &amp; B</div>
+      <h1>Automatic Image Mosaicing</h1>
+      <p>Part A uses manually matched points to estimate homographies, rectify planar objects, and blend overlapping photos. Part B automatically detects, describes, and matches image features, then uses four-point RANSAC to estimate homographies and stitch three mosaics.</p>
+      <nav aria-label="Report sections"><a href="#a1">A.1</a> · <a href="#a2">A.2</a> · <a href="#a3">A.3</a> · <a href="#a4">A.4</a> · <a href="#b1">B.1</a> · <a href="#b2">B.2</a> · <a href="#b3">B.3</a> · <a href="#b4">B.4</a></nav>
     </header>
 
     <main>
-      <section aria-labelledby="a1-heading">
+      <section id="a1" aria-labelledby="a1-heading">
         <div class="eyebrow">Part A.1</div>
         <h2 id="a1-heading">Shooting the pictures</h2>
         <p class="intro">I photographed three different scenes in overlapping pairs. Each pair was taken from the same spot. I rotated the camera slightly to the left and then slightly to the right without changing the center of projection.</p>
@@ -94,7 +122,7 @@
         </article>
       </section>
 
-      <section aria-labelledby="a2-heading">
+      <section id="a2" aria-labelledby="a2-heading">
         <div class="eyebrow">Part A.2</div>
         <h2 id="a2-heading">Recovering homographies</h2>
         <p class="intro">I selected 29 point correspondences between the two poster photographs using the CS180 correspondence tool. The figure overlays the photos with colored lines connecting matching scene features.</p>
@@ -126,7 +154,7 @@ Stack all Aᵢ and bᵢ rows, then solve A h ≈ b by least squares.</div>
         <p>Mean reprojection error: 4.63 pixels. Maximum reprojection error: 22.34 pixels.</p>
       </section>
 
-      <section aria-labelledby="a3-heading">
+      <section id="a3" aria-labelledby="a3-heading">
         <div class="eyebrow">Part A.3</div>
         <h2 id="a3-heading">Warping and rectification</h2>
 
@@ -161,10 +189,10 @@ Stack all Aᵢ and bᵢ rows, then solve A h ≈ b by least squares.</div>
           </tbody>
         </table>
         <p>In my loop-based implementation, bilinear sampling took about twice as long as nearest neighbor. This makes sense because bilinear interpolation combines four source pixel colors for each output pixel, while nearest neighbor only needs one. The exact timings also depend on the image size and the computer running the code.</p>
-        <p class="code-note">Both <code>warpImageNearestNeighbor</code> and <code>warpImageBilinear</code> are implemented in <a href="proj4a.py">proj4a.py</a>. Running the file generates all four rectifications and prints the time taken by each warp.</p>
+        <p class="code-note">Both <code>warpImageNearestNeighbor</code> and <code>warpImageBilinear</code> are implemented in proj4a.py. Running the file generates all four rectifications and prints the time taken by each warp.</p>
       </section>
 
-      <section aria-labelledby="a4-heading">
+      <section id="a4" aria-labelledby="a4-heading">
         <div class="eyebrow">Part A.4</div>
         <h2 id="a4-heading">Blending images into mosaics</h2>
         <p class="intro">Simply placing one warped image on top of another can leave a visible seam, especially when the lighting or alignment is slightly different. To make the transition smoother, I use feather blending. Each image gets a weight of 1 at its center, which gradually decreases to 0 toward its edges. This lets the images blend together instead of creating a sharp boundary.</p>
@@ -204,11 +232,122 @@ Stack all Aᵢ and bᵢ rows, then solve A h ≈ b by least squares.</div>
         </article>
         <p>This mosaic turned out a little worse than the other two. There are noticeable double edges around the warning sign, pipe, and door frame, even after feather blending. This is likely because some of my point matches weren't perfectly accurate, along with possible parallax from objects being at different depths. Better point matches could help, but a single homography can't perfectly align everything if the camera moved between the two shots.</p>
         <h3>Implementation</h3>
-        <p class="code-note">In <a href="proj4a.py"><code>proj4a.py</code></a>, my <code>makeMosaic</code> function reuses <code>warpImageBilinear</code> and the <code>featherWeight</code> helper. For each scene, I load the two images and their saved point correspondences, calculate the homography, warp the images, and save the final blended mosaic.</p>
+        <p class="code-note">In <code>proj4a.py</code>, my <code>makeMosaic</code> function reuses <code>warpImageBilinear</code> and the <code>featherWeight</code> helper. For each scene, I load the two images and their saved point correspondences, calculate the homography, warp the images, and save the final blended mosaic.</p>
+      </section>
+
+      <section id="b1" aria-labelledby="b1-heading">
+        <div class="eyebrow">Part B.1</div>
+        <h2 id="b1-heading">Harris Corner Detection and ANMS</h2>
+        <p class="intro">I run the instructor's single-scale Harris detector on grayscale versions of the six Part A photos, without sub-pixel refinement. The detector uses the response 2 det(M) / (trace(M) + epsilon), Gaussian scale sigma = 1, and excludes a 20-pixel border. I additionally keep only positive corner responses above 1% of the maximum response in each image.</p>
+        <p>Harris can produce many nearby candidates in textured regions such as poster lettering. To choose points that cover more of the image, I apply adaptive non-maximal suppression (ANMS) with c = 0.9 and retain 500 candidates per image.</p>
+        <div class="equation">r_i = min_j ||p_i - p_j||, where score_i &lt; 0.9 * score_j
+Keep the 500 candidates with the largest r_i.</div>
+        <p>For each candidate, ANMS measures the distance to the nearest sufficiently stronger candidate. A candidate near a stronger one receives a small radius, while one farther away receives a larger radius. Candidates with no sufficiently stronger neighbor receive an infinite radius. Keeping the largest radii encourages spatial coverage; ties are broken by corner score and then candidate index.</p>
+        <p>Each comparison shows all thresholded Harris candidates on the left, the 500 strongest scores in the middle, and 500 ANMS-selected candidates on the right. The middle and right panels use the same number of points so the effect of the selection rule can be compared directly. Click a figure to inspect it at full resolution.</p>
+        <article class="work-item"><h3>Poster hallway</h3>
+          <figure style="margin-top:18px"><a href="results/part_b/posters_1_corners.png"><img loading="lazy" src="results/part_b/posters_1_corners.png" alt="Poster hallway, view 1: all Harris corners, strongest scores, and ANMS-selected corners overlaid on the photo"></a><figcaption>View 1: 4,380 Harris candidates; 500 strongest-score corners; 500 ANMS corners.</figcaption></figure>
+          <figure style="margin-top:18px"><a href="results/part_b/posters_2_corners.png"><img loading="lazy" src="results/part_b/posters_2_corners.png" alt="Poster hallway, view 2: all Harris corners, strongest scores, and ANMS-selected corners overlaid on the photo"></a><figcaption>View 2: 4,502 Harris candidates; 500 strongest-score corners; 500 ANMS corners.</figcaption></figure>
+        </article>
+        <article class="work-item"><h3>Hallway doors</h3>
+          <figure style="margin-top:18px"><a href="results/part_b/hallway_1_corners.png"><img loading="lazy" src="results/part_b/hallway_1_corners.png" alt="Hallway doors, view 1: all Harris corners, strongest scores, and ANMS-selected corners overlaid on the photo"></a><figcaption>View 1: 4,748 Harris candidates; 500 strongest-score corners; 500 ANMS corners.</figcaption></figure>
+          <figure style="margin-top:18px"><a href="results/part_b/hallway_2_corners.png"><img loading="lazy" src="results/part_b/hallway_2_corners.png" alt="Hallway doors, view 2: all Harris corners, strongest scores, and ANMS-selected corners overlaid on the photo"></a><figcaption>View 2: 5,100 Harris candidates; 500 strongest-score corners; 500 ANMS corners.</figcaption></figure>
+        </article>
+        <article class="work-item"><h3>Bathroom stalls</h3>
+          <figure style="margin-top:18px"><a href="results/part_b/bathroom_1_corners.png"><img loading="lazy" src="results/part_b/bathroom_1_corners.png" alt="Bathroom stalls, view 1: all Harris corners, strongest scores, and ANMS-selected corners overlaid on the photo"></a><figcaption>View 1: 742 Harris candidates; 500 strongest-score corners; 500 ANMS corners.</figcaption></figure>
+          <figure style="margin-top:18px"><a href="results/part_b/bathroom_2_corners.png"><img loading="lazy" src="results/part_b/bathroom_2_corners.png" alt="Bathroom stalls, view 2: all Harris corners, strongest scores, and ANMS-selected corners overlaid on the photo"></a><figcaption>View 2: 740 Harris candidates; 500 strongest-score corners; 500 ANMS corners.</figcaption></figure>
+        </article>
+        <p>The score-only selection concentrates points on high-contrast details, especially text. ANMS also retains candidates around other structures, giving broader coverage while still selecting detected corners. Blank walls remain sparse because ANMS selects from existing candidates rather than creating new ones.</p>
+        <p class="code-note">The unmodified course starter is included as <code>harris.py</code> (the instructor-provided starter). My wrapper, ANMS implementation, and figure generation are in <code>proj4b.py</code>. Run <code>python3 proj4b.py</code> to reproduce these figures; dependencies are in <code>requirements-b.txt</code>. The ANMS selection follows Section 3 of <a href="https://cal-cs180.github.io/fa26/hw/proj3/Papers/MOPS.pdf">Brown et al., Multi-Image Matching using Multi-Scale Oriented Patches</a>.</p>
+      </section>
+
+      <section id="b2" aria-labelledby="b2-heading">
+        <div class="eyebrow">Part B.2</div>
+        <h2 id="b2-heading">Feature Descriptor Extraction</h2>
+        <p class="intro">Each ANMS-selected corner is described by an axis-aligned 8 by 8 grid of grayscale intensities sampled from a 40 by 40 pixel region. This follows the five-pixel sample spacing in Section 4 and Figure 4 of <a href="https://cal-cs180.github.io/fa26/hw/proj3/Papers/MOPS.pdf">Brown et al.'s MOPS paper</a>, with the assignment's simplifications: no orientation alignment, no multiscale detection, and no Haar wavelet transform.</p>
+        <p>For each corner, I extract a 40 by 40 grayscale patch and smooth it with a Gaussian filter (sigma = 2 pixels) to reduce aliasing. I sample rows and columns 2, 7, 12, 17, 22, 27, 32, and 37 of the blurred patch, producing an 8 by 8 descriptor with five-pixel spacing. This simple integer grid uses patch smoothing rather than the paper's higher-pyramid-level sampling.</p>
+        <p>After sampling, each descriptor has its own mean subtracted and is divided by its own standard deviation. Nonconstant descriptors therefore have mean zero and standard deviation one, reducing sensitivity to additive brightness changes and positive contrast scaling. A small denominator floor prevents division by zero for constant patches.</p>
+        <div class="equation">descriptor = (sampled_patch - mean(sampled_patch)) / max(std(sampled_patch), 1e-8)
+Descriptor shape: 8 x 8 = 64 intensity values per corner</div>
+        <p>Each figure shows eight source neighborhoods above their corresponding normalized descriptors. Each descriptor is displayed with its own grayscale range and enlarged without interpolation so the individual samples remain visible.</p>
+        <article class="work-item"><h3>Poster hallway</h3>
+          <figure style="margin-top:18px"><a href="results/part_b/posters_1_descriptors.png"><img loading="lazy" src="results/part_b/posters_1_descriptors.png" alt="Poster hallway, view 1: eight 40 by 40 source neighborhoods above their normalized 8 by 8 descriptors"></a><figcaption>View 1: eight examples from 500 normalized descriptors. <a href="results/part_b/posters_1_descriptors.npz">Saved coordinates and descriptors</a>.</figcaption></figure>
+          <figure style="margin-top:18px"><a href="results/part_b/posters_2_descriptors.png"><img loading="lazy" src="results/part_b/posters_2_descriptors.png" alt="Poster hallway, view 2: eight 40 by 40 source neighborhoods above their normalized 8 by 8 descriptors"></a><figcaption>View 2: eight examples from 500 normalized descriptors. <a href="results/part_b/posters_2_descriptors.npz">Saved coordinates and descriptors</a>.</figcaption></figure>
+        </article>
+        <article class="work-item"><h3>Hallway doors</h3>
+          <figure style="margin-top:18px"><a href="results/part_b/hallway_1_descriptors.png"><img loading="lazy" src="results/part_b/hallway_1_descriptors.png" alt="Hallway doors, view 1: eight 40 by 40 source neighborhoods above their normalized 8 by 8 descriptors"></a><figcaption>View 1: eight examples from 500 normalized descriptors. <a href="results/part_b/hallway_1_descriptors.npz">Saved coordinates and descriptors</a>.</figcaption></figure>
+          <figure style="margin-top:18px"><a href="results/part_b/hallway_2_descriptors.png"><img loading="lazy" src="results/part_b/hallway_2_descriptors.png" alt="Hallway doors, view 2: eight 40 by 40 source neighborhoods above their normalized 8 by 8 descriptors"></a><figcaption>View 2: eight examples from 500 normalized descriptors. <a href="results/part_b/hallway_2_descriptors.npz">Saved coordinates and descriptors</a>.</figcaption></figure>
+        </article>
+        <article class="work-item"><h3>Bathroom stalls</h3>
+          <figure style="margin-top:18px"><a href="results/part_b/bathroom_1_descriptors.png"><img loading="lazy" src="results/part_b/bathroom_1_descriptors.png" alt="Bathroom stalls, view 1: eight 40 by 40 source neighborhoods above their normalized 8 by 8 descriptors"></a><figcaption>View 1: eight examples from 500 normalized descriptors. <a href="results/part_b/bathroom_1_descriptors.npz">Saved coordinates and descriptors</a>.</figcaption></figure>
+          <figure style="margin-top:18px"><a href="results/part_b/bathroom_2_descriptors.png"><img loading="lazy" src="results/part_b/bathroom_2_descriptors.png" alt="Bathroom stalls, view 2: eight 40 by 40 source neighborhoods above their normalized 8 by 8 descriptors"></a><figcaption>View 2: eight examples from 500 normalized descriptors. <a href="results/part_b/bathroom_2_descriptors.npz">Saved coordinates and descriptors</a>.</figcaption></figure>
+        </article>
+        <p class="code-note">The extraction and normalization functions are implemented in the submitted <code>proj4b.py</code>. Call <code>run_b2("posters_1.jpg")</code> to regenerate an example. Saved descriptor arrays are available above.</p>
+      </section>
+
+      <section id="b3" aria-labelledby="b3-heading">
+        <div class="eyebrow">Part B.3</div>
+        <h2 id="b3-heading">Feature Matching</h2>
+        <p class="intro">For each descriptor in the first image, I compare its 64 normalized intensity values with every descriptor in the second image. The matching error is the sum of squared differences (SSD): smaller error means more similar patches. I sort these errors to identify the best and second-best candidates.</p>
+        <p>I use the two-neighbor ratio test described in Section 5.1 and Figure 6b of the <a href="https://cal-cs180.github.io/fa26/hw/proj3/Papers/MOPS.pdf">MOPS paper</a>. A match is kept only when its best SSD is less than 0.8 times its second-best SSD. The threshold applies to squared distances; it is an implementation choice rather than a claim that the paper prescribes 0.8. Testing the inequality without division also rejects the ambiguous case where both errors are zero.</p>
+        <div class="equation">SSD(i, j) = sum((descriptor_1[i] - descriptor_2[j]) ** 2)
+Accept best match when SSD_best &lt; 0.8 * SSD_second_best</div>
+        <p>This test favors a distinctive best match over two similarly good alternatives. Matching runs from image 1 to image 2 without a mutual-match or one-to-one constraint, so multiple source features may choose the same destination. No wavelet indexing or multi-image outlier model is used. These are candidate matches before RANSAC; incorrect matches can remain and will be addressed in B.4.</p>
+        <article class="work-item"><h3>Poster hallway</h3>
+          <figure><a href="results/part_b/posters_1_posters_2_matches.png"><img loading="lazy" src="results/part_b/posters_1_posters_2_matches.png" alt="Poster hallway: candidate feature matches connected across the two photos before RANSAC"></a><figcaption>273 matches retained from 500 source descriptors at an SSD ratio threshold of 0.8. Lines connect matched corner coordinates; colors distinguish pairs and do not indicate correctness. <a href="results/part_b/posters_1_posters_2_matches.npz">Saved coordinates and match indices</a>.</figcaption></figure>
+        </article>
+        <article class="work-item"><h3>Hallway doors</h3>
+          <figure><a href="results/part_b/hallway_1_hallway_2_matches.png"><img loading="lazy" src="results/part_b/hallway_1_hallway_2_matches.png" alt="Hallway doors: candidate feature matches connected across the two photos before RANSAC"></a><figcaption>241 matches retained from 500 source descriptors at an SSD ratio threshold of 0.8. Lines connect matched corner coordinates; colors distinguish pairs and do not indicate correctness. <a href="results/part_b/hallway_1_hallway_2_matches.npz">Saved coordinates and match indices</a>.</figcaption></figure>
+        </article>
+        <article class="work-item"><h3>Bathroom stalls</h3>
+          <figure><a href="results/part_b/bathroom_1_bathroom_2_matches.png"><img loading="lazy" src="results/part_b/bathroom_1_bathroom_2_matches.png" alt="Bathroom stalls: candidate feature matches connected across the two photos before RANSAC"></a><figcaption>319 matches retained from 500 source descriptors at an SSD ratio threshold of 0.8. Lines connect matched corner coordinates; colors distinguish pairs and do not indicate correctness. <a href="results/part_b/bathroom_1_bathroom_2_matches.npz">Saved coordinates and match indices</a>.</figcaption></figure>
+        </article>
+        <p class="code-note">The code submission includes the feature matching implementation, plotting helper, and <code>run_b3</code> runner. The saved match indices are available above.</p>
+      </section>
+
+      <section id="b4" aria-labelledby="b4-heading">
+        <div class="eyebrow">Part B.4</div>
+        <h2 id="b4-heading">RANSAC for Robust Homography</h2>
+        <p class="intro">Descriptor matching produces candidate correspondences, including incorrect ones. I implement four-point RANSAC from scratch: sample four match pairs, estimate a homography using my Part A solver, and test how many of all the candidate pairs agree with that transformation. No library RANSAC or homography estimator is used.</p>
+        <p>I run 2,000 trials with random seed 0. Collinear samples and singular homographies are skipped. A match is an inlier when the Euclidean distance between its projected image-1 point and its actual image-2 point is less than 3 pixels. I keep the largest inlier set, breaking ties by total inlier error, then refit using all inliers with up to three rounds of reclassification.</p>
+        <div class="equation">predicted_point_2 = H * [x_1, y_1, 1] (divide by its third coordinate)
+error = sqrt((predicted_x_2 - x_2)^2 + (predicted_y_2 - y_2)^2)
+inlier = error &lt; 3 pixels</div>
+        <p>For automatic stitching, the homography is estimated entirely from detected and matched features. The manual correspondences are used only for the Part A comparison. Both methods keep image 1 fixed, inverse-warp image 2 using bilinear interpolation, and use the same feather blending. Black areas are outside the source images.</p>
+        <table><caption>Automatic alignment statistics (errors measured only on RANSAC inliers)</caption><thead><tr><th scope="col">Scene</th><th scope="col">Candidate matches</th><th scope="col">Inliers</th><th scope="col">Mean error</th><th scope="col">Median error</th></tr></thead><tbody>
+<tr><th scope="row">Poster hallway</th><td>273</td><td>153</td><td>1.30 px</td><td>1.15 px</td></tr>
+<tr><th scope="row">Hallway doors</th><td>241</td><td>102</td><td>1.38 px</td><td>1.29 px</td></tr>
+<tr><th scope="row">Bathroom stalls</th><td>319</td><td>183</td><td>1.24 px</td><td>1.00 px</td></tr>
+        </tbody></table>
+        <p>These errors measure agreement with the fitted model; they are not an independent measure of matching accuracy. Remaining misalignment can come from imperfect corner localization, parallax, lens distortion, or the limits of a single homography.</p>
+        <article class="work-item"><h3>Poster hallway: manual versus automatic</h3>
+          <figure><a href="results/part_b/posters_mosaic_comparison.png"><img loading="lazy" src="results/part_b/posters_mosaic_comparison.png" alt="Poster hallway: manual mosaic on the left and automatic RANSAC mosaic on the right"></a><figcaption>Left: Part A mosaic using 29 manually selected pairs. Right: automatic mosaic using 153 RANSAC inliers from 273 candidate matches. <a href="results/part_b/mosaic_posters_automatic.png">Full-resolution automatic mosaic</a>.</figcaption></figure>
+          <p>The automatic and manual mosaics have similar geometry. The poster boundaries and lettering align well; small residual differences remain near the ceiling and at some fine details.</p>
+          <figure><a href="results/part_b/posters_ransac_matches.png"><img loading="lazy" src="results/part_b/posters_ransac_matches.png" alt="Poster hallway: RANSAC inliers in green and rejected matches in red"></a><figcaption>Green: 153 matches agreeing with H within 3 pixels. Red: 120 rejected matches. <a href="results/part_b/posters_ransac.json">Homography and statistics</a>.</figcaption></figure>
+          <details><summary>Automatic homography: image 1 to image 2</summary><pre class="equation">[ 1.39900037, -0.00284028, -462.88431540]
+[ 0.26746047,  1.25072383, -177.35637443]
+[ 0.00034699, -0.00000245,  1.00000000]</pre></details>
+        </article>
+        <article class="work-item"><h3>Hallway doors: manual versus automatic</h3>
+          <figure><a href="results/part_b/hallway_mosaic_comparison.png"><img loading="lazy" src="results/part_b/hallway_mosaic_comparison.png" alt="Hallway doors: manual mosaic on the left and automatic RANSAC mosaic on the right"></a><figcaption>Left: Part A mosaic using 7 manually selected pairs. Right: automatic mosaic using 102 RANSAC inliers from 241 candidate matches. <a href="results/part_b/mosaic_hallway_automatic.png">Full-resolution automatic mosaic</a>.</figcaption></figure>
+          <p>The automatic alignment visibly reduces the double edges around the warning sign, fire alarm, and pipe compared with the seven-point manual alignment. Some perspective stretching and residual edge differences remain.</p>
+          <figure><a href="results/part_b/hallway_ransac_matches.png"><img loading="lazy" src="results/part_b/hallway_ransac_matches.png" alt="Hallway doors: RANSAC inliers in green and rejected matches in red"></a><figcaption>Green: 102 matches agreeing with H within 3 pixels. Red: 139 rejected matches. <a href="results/part_b/hallway_ransac.json">Homography and statistics</a>.</figcaption></figure>
+          <details><summary>Automatic homography: image 1 to image 2</summary><pre class="equation">[ 1.47550082,  0.06272878, -663.56992534]
+[ 0.24653294,  1.35681306, -254.87509777]
+[ 0.00037594,  0.00003285,  1.00000000]</pre></details>
+        </article>
+        <article class="work-item"><h3>Bathroom stalls: manual versus automatic</h3>
+          <figure><a href="results/part_b/bathroom_mosaic_comparison.png"><img loading="lazy" src="results/part_b/bathroom_mosaic_comparison.png" alt="Bathroom stalls: manual mosaic on the left and automatic RANSAC mosaic on the right"></a><figcaption>Left: Part A mosaic using 16 manually selected pairs. Right: automatic mosaic using 183 RANSAC inliers from 319 candidate matches. <a href="results/part_b/mosaic_bathroom_automatic.png">Full-resolution automatic mosaic</a>.</figcaption></figure>
+          <p>Both methods align the main stall doors, while fine structures and ceiling fixtures can retain small double edges. Feather blending reduces brightness seams but cannot fully remove parallax or geometry errors.</p>
+          <figure><a href="results/part_b/bathroom_ransac_matches.png"><img loading="lazy" src="results/part_b/bathroom_ransac_matches.png" alt="Bathroom stalls: RANSAC inliers in green and rejected matches in red"></a><figcaption>Green: 183 matches agreeing with H within 3 pixels. Red: 136 rejected matches. <a href="results/part_b/bathroom_ransac.json">Homography and statistics</a>.</figcaption></figure>
+          <details><summary>Automatic homography: image 1 to image 2</summary><pre class="equation">[ 1.35868040,  0.01816023, -455.34060350]
+[ 0.21055225,  1.24144655, -182.79629235]
+[ 0.00028887,  0.00001381,  1.00000000]</pre></details>
+        </article>
+        <p class="code-note">The code submission includes <code>match_features</code>, <code>project_points</code>, <code>ransac_homography</code>, <code>stitch_automatically</code>, the comparison helper, and <code>run_b4</code>. Run <code>python3 proj4b.py --part b4</code> to regenerate all three comparisons, or <code>python3 proj4b.py</code> for B.1 through B.4. Part A is retained above.</p>
       </section>
 
     </main>
 
-    <footer>CS180 · Image Warping and Mosaicing · Part A</footer>
+    <footer>CS180 · Image Warping and Mosaicing · Parts A and B.1–B.4</footer>
   </body>
 </html>
