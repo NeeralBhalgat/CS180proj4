@@ -42,11 +42,11 @@ def adaptive_non_maximal_suppression(points, scores, num_points=500, c_robust=0.
 
     for i in range(len(points)):
         keep = scores[i] < c_robust * scores
-        otherPts = points[keep]
+        pts = points[keep]
 
-        if len(otherPts) > 0:
-            dx = otherPts[:, 0] - points[i, 0]
-            dy = otherPts[:, 1] - points[i, 1]
+        if len(pts) > 0:
+            dx = pts[:, 0] - points[i, 0]
+            dy = pts[:, 1] - points[i, 1]
             dist = np.sqrt(dx ** 2 + dy ** 2)
             radii[i] = dist.min()
 
@@ -95,20 +95,23 @@ def extract_feature_descriptors(image, points, patch_size=40,
             raise ValueError("Feature points must have a full patch inside the image.")
         patch = gray[y - half : y + half, x - half : x + half]
         blur = gaussian_filter(patch, sigma=sigma)
-        descriptors[i] = blur[start::step, start::step]
+        # pick one value every five pixels for the default 40 -> 8 patch
+        for r in range(descriptor_size):
+            for c in range(descriptor_size):
+                descriptors[i, r, c] = blur[start + r * step, start + c * step]
 
     return normalize_descriptors(descriptors)
 
 def normalize_descriptors(descriptors, epsilon=1e-8):
-    normalized = np.zeros_like(descriptors, dtype=float)
+    out = np.zeros_like(descriptors, dtype=float)
     for i, patch in enumerate(descriptors):
-        mean = patch.mean()
-        std = patch.std()
-        centered = patch - mean
-        scale = max(std, epsilon)
-        normalized[i] = centered / scale
+        m = patch.mean()
+        s = patch.std()
+        if s < epsilon:
+            s = epsilon
+        out[i] = (patch - m) / s
 
-    return normalized
+    return out
 
 
 def save_descriptor_examples(image, points, descriptors, filename,
@@ -146,11 +149,11 @@ def match_features(descriptors1, descriptors2, ratio_threshold=0.8):
     matches = []
     if len(descriptors2) < 2:
         return np.empty((0, 2), dtype=int)
-    for i, descriptor in enumerate(descriptors1):
-        diff = descriptors2 - descriptor
+    for i in range(len(descriptors1)):
         dist = []
-        for row in diff:
-            dist.append(np.sum(row ** 2))
+        for j in range(len(descriptors2)):
+            d = descriptors1[i] - descriptors2[j]
+            dist.append(np.sum(d ** 2))
         order = np.argsort(dist)
         best = order[0]
         second = order[1]
@@ -209,7 +212,7 @@ def ransac_homography(points1, points2, num_iterations=2000,
         raise ValueError("RANSAC needs at least four matched points.")
     rng = np.random.default_rng(seed)
     best_inliers = np.zeros(len(points1), dtype=bool)
-    bestErr = np.inf
+    errbest = np.inf
 
     for _ in range(num_iterations):
         sample = rng.choice(len(points1), size=4, replace=False)
@@ -234,9 +237,9 @@ def ransac_homography(points1, points2, num_iterations=2000,
         inliers = errors < inlier_threshold
         count = inliers.sum()
         error = errors[inliers].sum()
-        if count > best_inliers.sum() or (count == best_inliers.sum() and error < bestErr):
+        if count > best_inliers.sum() or (count == best_inliers.sum() and error < errbest):
             best_inliers = inliers
-            bestErr = error
+            errbest = error
 
     if best_inliers.sum() < 4:
         raise ValueError("RANSAC could not find four consistent matches.")
@@ -288,12 +291,12 @@ def run_b1(image_filename, num_points=500):
     image = load_image(image_filename)
     _, points, scores = get_harris_corners(image)
     selected, radii = adaptive_non_maximal_suppression(points, scores, num_points)
-    outDir = RESULTS_DIR / "part_b"
-    outDir.mkdir(parents=True, exist_ok=True)
+    out = RESULTS_DIR / "part_b"
+    out.mkdir(parents=True, exist_ok=True)
     stem = Path(image_filename).stem
     save_corner_comparison(image, points, scores, selected,
-                           outDir / f"{stem}_corners.png")
-    np.savez(outDir / f"{stem}_corners.npz", points=points, scores=scores,
+                           out / f"{stem}_corners.png")
+    np.savez(out / f"{stem}_corners.npz", points=points, scores=scores,
              radii=radii, selected_indices=selected, selected_points=points[selected])
     print(f"{image_filename}: {len(points)} Harris candidates -> {len(selected)} ANMS points")
     return points, scores, selected, radii
@@ -307,18 +310,18 @@ def run_b2(image_filename, num_points=500, num_examples=8):
 
     descriptors = extract_feature_descriptors(image, points)
 
-    outDir = RESULTS_DIR / "part_b"
-    outDir.mkdir(parents=True, exist_ok=True)
+    out = RESULTS_DIR / "part_b"
+    out.mkdir(parents=True, exist_ok=True)
     stem = Path(image_filename).stem
 
     save_descriptor_examples(
         image, points, descriptors,
-        outDir / f"{stem}_descriptors.png",
+        out / f"{stem}_descriptors.png",
         num_examples=num_examples,
     )
 
     np.savez(
-        outDir / f"{stem}_descriptors.npz",
+        out / f"{stem}_descriptors.npz",
         points=points, descriptors=descriptors,
     )
 
@@ -331,12 +334,12 @@ def run_b3(image1_filename, image2_filename, num_points=500, ratio_threshold=0.8
     points1, descriptors1 = run_b2(image1_filename, num_points)
     points2, descriptors2 = run_b2(image2_filename, num_points)
     matches = match_features(descriptors1, descriptors2, ratio_threshold)
-    outDir = RESULTS_DIR / "part_b"
-    outDir.mkdir(parents=True, exist_ok=True)
+    out = RESULTS_DIR / "part_b"
+    out.mkdir(parents=True, exist_ok=True)
     stem = f"{Path(image1_filename).stem}_{Path(image2_filename).stem}"
     save_feature_matches(image1, image2, points1, points2, matches,
-                         outDir / f"{stem}_matches.png")
-    np.savez(outDir / f"{stem}_matches.npz", points1=points1,
+                         out / f"{stem}_matches.png")
+    np.savez(out / f"{stem}_matches.npz", points1=points1,
              points2=points2, matches=matches, ratio_threshold=ratio_threshold)
     print(f"{stem}: {len(matches)} candidate matches at squared-distance ratio < {ratio_threshold}")
     return points1, points2, matches
@@ -349,8 +352,8 @@ def run_b4(image1_filename, image2_filename, correspondence_filename,
     mosaic, H, points1, points2, matches, inliers = stitch_automatically(
         image1, image2, num_points)
     scene = Path(image1_filename).stem.rsplit("_", 1)[0]
-    outDir = RESULTS_DIR / "part_b"
-    outDir.mkdir(parents=True, exist_ok=True)
+    out = RESULTS_DIR / "part_b"
+    out.mkdir(parents=True, exist_ok=True)
     save_image(mosaic, f"part_b/mosaic_{scene}_automatic.png")
 
     manual_points1, manual_points2 = load_correspondences(correspondence_filename)
@@ -362,9 +365,9 @@ def run_b4(image1_filename, image2_filename, correspondence_filename,
         manual_mosaic = makeMosaic(image1, image2, manual_H)
         save_image(manual_mosaic, f"mosaic_{scene}.png")
     save_mosaic_comparison(manual_mosaic, mosaic,
-                           outDir / f"{scene}_mosaic_comparison.png")
+                           out / f"{scene}_mosaic_comparison.png")
     save_feature_matches(image1, image2, points1, points2, matches,
-                         outDir / f"{scene}_ransac_matches.png", inliers)
+                         out / f"{scene}_ransac_matches.png", inliers)
     matched1 = points1[matches[:, 0]]
     matched2 = points2[matches[:, 1]]
     errors = np.sqrt(np.sum((project_points(matched1, H) - matched2) ** 2, axis=1))
@@ -374,8 +377,8 @@ def run_b4(image1_filename, image2_filename, correspondence_filename,
              "manual_points": len(manual_points1), "iterations": 2000,
              "threshold_pixels": 3.0, "seed": 0,
              "H": H.tolist(), "manual_H": manual_H.tolist()}
-    (outDir / f"{scene}_ransac.json").write_text(json.dumps(stats, indent=2) + "\n")
-    np.savez(outDir / f"{scene}_ransac.npz", H=H, points1=points1,
+    (out / f"{scene}_ransac.json").write_text(json.dumps(stats, indent=2) + "\n")
+    np.savez(out / f"{scene}_ransac.npz", H=H, points1=points1,
              points2=points2, matches=matches, inliers=inliers, errors=errors)
     print(f"{scene}: {inliers.sum()}/{len(matches)} inliers; mean error {errors[inliers].mean():.2f} px", flush=True)
     return H, inliers
